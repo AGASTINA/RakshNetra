@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Management - RakshNetra</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/management.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>RAKSHNETRA</h1>
+                <span class="breadcrumb"><a href="{% url 'dashboard' %}">Dashboard</a> / Cameras</span>
+            </div>
+            <div class="header-right">
+                <span class="username">{{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="section-header">
+                <h2>Camera Management</h2>
+                <button class="btn btn-primary" onclick="openAddCameraModal()">+ Add Camera</button>
+            </div>
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="cameras-grid">
+                {% for camera in cameras %}
+                <div class="camera-card">
+                    <div class="card-header">
+                        <h3>{{ camera.name }}</h3>
+                        <span class="status-badge {% if camera.enabled %}active{% else %}inactive{% endif %}">
+                            {% if camera.enabled %}ACTIVE{% else %}INACTIVE{% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span class="label">Protocol:</span>
+                            <span class="value">{{ camera.get_protocol_display }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Source:</span>
+                            <span class="value code">{{ camera.source }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Mode:</span>
+                            <span class="value">{{ camera.get_mode_display }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Models:</span>
+                            <span class="value">{{ camera.assigned_models.count }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <a href="{% url 'camera_viewer' camera.id %}" class="btn btn-small" style="background: rgba(0, 212, 255, 0.2); color: #00d4ff; border: 1px solid #00d4ff; text-decoration: none; display: inline-block;">👁 View Live</a>
+                        
+                        <button class="btn btn-small btn-edit"
+                            data-camera-id="{{ camera.id }}"
+                            data-camera-name="{{ camera.name|escapejs }}"
+                            data-camera-protocol="{{ camera.protocol|escapejs }}"
+                            data-camera-source="{{ camera.source|escapejs }}"
+                            data-camera-mode="{{ camera.mode|escapejs }}"
+                            onclick="openEditCameraModalFromButton(this)">Edit</button>
+                        
+                        <form method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="toggle">
+                            <input type="hidden" name="camera_id" value="{{ camera.id }}">
+                            <button type="submit" class="btn btn-small btn-toggle">
+                                {% if camera.enabled %}Disable{% else %}Enable{% endif %}
+                            </button>
+                        </form>
+                        
+                        <button class="btn btn-small btn-danger" onclick="if(confirm('Delete this camera?')) document.getElementById('delete-form-{{ camera.id }}').submit()">Delete</button>
+                        <form id="delete-form-{{ camera.id }}" method="POST" style="display:none;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="camera_id" value="{{ camera.id }}">
+                        </form>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state">
+                    <p>No cameras configured yet.</p>
+                    <button class="btn btn-primary" onclick="openAddCameraModal()">Add First Camera</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Camera Modal -->
+    <div id="cameraModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Camera</h2>
+                <span class="close" onclick="closeCameraModal()">&times;</span>
+            </div>
+            
+            <form method="POST" id="cameraForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" id="action" name="action" value="add">
+                <input type="hidden" id="camera_id" name="camera_id">
+                
+                <div class="form-group">
+                    <label for="name">Camera Name *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="protocol">Protocol *</label>
+                    <select id="protocol" name="protocol" required onchange="updateSourceHelp()">
+                        <option value="">Select Protocol</option>
+                        {% for value, label in protocols %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <small id="sourceHelp" class="help-text"></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="source">Source *</label>
+                    <input type="text" id="source" name="source" placeholder="URL, file path, or device index" required>
+                    <input type="file" id="video_file" name="video_file" accept="video/mp4,video/*" style="display:none; margin-top:8px;">
+                    <small class="help-text" id="fileHelp" style="display:none;">Upload a video file (MP4 recommended). Source is optional for file uploads.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mode">Stream Mode *</label>
+                    <select id="mode" name="mode" required>
+                        {% for value, label in modes %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="models">Assign AI Models</label>
+                    <div class="models-list">
+                        {% for model in models %}
+                        <label class="checkbox">
+                            <input type="checkbox" name="models" value="{{ model.id }}">
+                            {{ model.name }} ({{ model.get_model_type_display }})
+                        </label>
+                        {% empty %}
+                        <p class="no-models">No AI models available. <a href="{% url 'model_management' %}">Upload models</a></p>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-primary">Save Camera</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCameraModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #16213e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            color: #fff;
+            font-size: 28px;
+            cursor: pointer;
+        }
+    </style>
+
+    <script>
+        function openAddCameraModal() {
+            document.getElementById('action').value = 'add';
+            document.getElementById('modalTitle').textContent = 'Add New Camera';
+            document.getElementById('cameraForm').reset();
+            document.getElementById('camera_id').value = '';
+            document.getElementById('cameraModal').style.display = 'flex';
+        }
+
+        function openEditCameraModal(id, name, protocol, source, mode) {
+            document.getElementById('action').value = 'edit';
+            document.getElementById('modalTitle').textContent = 'Edit Camera';
+            document.getElementById('camera_id').value = id;
+            document.getElementById('name').value = name;
+            document.getElementById('protocol').value = protocol;
+            document.getElementById('source').value = source;
+            document.getElementById('mode').value = mode;
+            document.getElementById('cameraModal').style.display = 'flex';
+        }
+
+        function openEditCameraModalFromButton(btn) {
+            const id = btn.dataset.cameraId;
+            const name = btn.dataset.cameraName;
+            const protocol = btn.dataset.cameraProtocol;
+            const source = btn.dataset.cameraSource;
+            const mode = btn.dataset.cameraMode;
+            openEditCameraModal(id, name, protocol, source, mode);
+        }
+
+        function closeCameraModal() {
+            document.getElementById('cameraModal').style.display = 'none';
+        }
+
+        function updateSourceHelp() {
+            const protocol = document.getElementById('protocol').value;
+            const helpText = {
+                'webcam': 'Device index (e.g., 0 for default webcam)',
+                'rtsp': 'RTSP URL (e.g., rtsp://camera.local:554/stream)',
+                'rtmp': 'RTMP URL (e.g., rtmp://server/app)',
+                'http': 'HTTP/HTTPS URL (e.g., http://camera.local/stream)',
+                'hls': 'HLS URL (e.g., http://server/stream.m3u8)',
+                'file': 'Upload a video file or provide local path',
+            };
+            document.getElementById('sourceHelp').textContent = helpText[protocol] || '';
+            // Show file input only for file protocol
+            const fileInput = document.getElementById('video_file');
+            const fileHelp = document.getElementById('fileHelp');
+            const sourceInput = document.getElementById('source');
+            if (protocol === 'file') {
+                if (fileInput) fileInput.style.display = 'block';
+                if (fileHelp) fileHelp.style.display = 'block';
+                if (sourceInput) sourceInput.removeAttribute('required');
+            } else {
+                if (fileInput) fileInput.style.display = 'none';
+                if (fileHelp) fileHelp.style.display = 'none';
+                if (sourceInput) sourceInput.setAttribute('required', 'required');
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('cameraModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

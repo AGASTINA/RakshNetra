@@ -1,0 +1,376 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Situational Map - RakshNetra</title>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <style>
+        .map-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 140px);
+        }
+
+        .map-toolbox {
+            background: rgba(15, 30, 50, 0.8);
+            border: 1px solid rgba(52, 211, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            height: fit-content;
+        }
+
+        .map-toolbox h3 {
+            color: #34d3ff;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .tool-section {
+            margin-bottom: 20px;
+        }
+
+        .tool-section label {
+            display: block;
+            color: #a0aec0;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .tool-button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(52, 211, 255, 0.1);
+            border: 1px solid rgba(52, 211, 255, 0.3);
+            border-radius: 6px;
+            color: #34d3ff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-button:hover {
+            background: rgba(52, 211, 255, 0.2);
+            border-color: #34d3ff;
+        }
+
+        .tool-button.active {
+            background: rgba(52, 211, 255, 0.3);
+            border-color: #34d3ff;
+        }
+
+        .tool-button svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .upload-section {
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .ai-draw-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+
+        .ai-draw-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .map-editor {
+            background: rgba(15, 30, 50, 0.6);
+            border: 1px solid rgba(52, 211, 255, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .map-header h2 {
+            color: #34d3ff;
+            font-size: 20px;
+        }
+
+        .map-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            background: rgba(52, 211, 255, 0.1);
+            border: 1px solid rgba(52, 211, 255, 0.3);
+            border-radius: 6px;
+            color: #34d3ff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: rgba(52, 211, 255, 0.2);
+        }
+
+        .action-btn.save {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px dashed rgba(52, 211, 255, 0.3);
+            border-radius: 8px;
+            overflow: auto;
+            min-height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #mapCanvas {
+            cursor: crosshair;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .object-properties {
+            position: absolute;
+            top: 80px;
+            right: 30px;
+            background: rgba(15, 30, 50, 0.95);
+            border: 1px solid rgba(52, 211, 255, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 200px;
+            display: none;
+            z-index: 100;
+        }
+
+        .object-properties.show {
+            display: block;
+        }
+
+        .object-properties h4 {
+            color: #34d3ff;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .object-properties input,
+        .object-properties select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(52, 211, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .property-btn {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .property-btn.delete {
+            background: #f5576c;
+            color: white;
+        }
+
+        .property-btn.close {
+            background: rgba(52, 211, 255, 0.2);
+            color: #34d3ff;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #a0aec0;
+            padding: 40px;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>RAKSHNETRA</h1>
+                <p>AI-Powered Integrated Command & Surveillance</p>
+            </div>
+            <div class="nav-status">
+                <span class="status-indicator"></span>
+                <span>Server: <span id="serverStatus">ONLINE</span></span>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="subnav">
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="/management/cameras/">Cameras</a>
+        <a href="/management/models/">AI Models</a>
+        <a href="/management/faces/">Face Identities</a>
+        <a href="/management/alerts/">Alerts</a>
+        <a href="/management/events/">Events</a>
+        <a href="{% url 'situational_map' %}" class="active">Situational Map</a>
+    </nav>
+
+    <div class="map-container">
+        <!-- Toolbox -->
+        <div class="map-toolbox">
+            <h3>🛠️ Map Tools</h3>
+            
+            <div class="upload-section">
+                <label>Upload Floor Plan</label>
+                <input type="file" id="layoutUpload" accept="image/*" style="display: none;">
+                <button class="upload-btn" onclick="document.getElementById('layoutUpload').click()">
+                    📁 Upload Layout
+                </button>
+                <button class="ai-draw-btn" id="aiDrawBtn">
+                    🤖 AI Auto-Draw Map
+                </button>
+                
+                <label style="margin-top: 12px; display: block;">Load Saved Map</label>
+                <select id="savedMapSelector" style="width: 100%; padding: 10px; margin-bottom: 8px; background: rgba(52, 211, 255, 0.1); border: 1px solid rgba(52, 211, 255, 0.3); border-radius: 6px; color: #34d3ff; font-size: 13px; cursor: pointer;">
+                    <option value="">Select saved map...</option>
+                </select>
+            </div>
+
+            <div class="tool-section">
+                <label>Select Object Type</label>
+                <button class="tool-button" data-tool="camera">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+                        <path d="M14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                    </svg>
+                    Camera
+                </button>
+                <button class="tool-button" data-tool="zone">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/>
+                    </svg>
+                    Zone/Area
+                </button>
+                <button class="tool-button" data-tool="sensor">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z"/>
+                    </svg>
+                    Sensor
+                </button>
+                <button class="tool-button" data-tool="door">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm2 7a1 1 0 100 2 1 1 0 000-2z"/>
+                    </svg>
+                    Door/Entry
+                </button>
+                <button class="tool-button" data-tool="marker">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                    POI Marker
+                </button>
+            </div>
+
+            <div class="tool-section">
+                <label>Map Controls</label>
+                <button class="action-btn" id="clearBtn" style="width: 100%; margin-bottom: 8px;">
+                    🗑️ Clear All
+                </button>
+                <button class="action-btn" id="resetZoomBtn" style="width: 100%;">
+                    🔍 Reset Zoom
+                </button>
+            </div>
+        </div>
+
+        <!-- Map Editor -->
+        <div class="map-editor">
+            <div class="map-header">
+                <h2>📍 Situational Map Editor</h2>
+                <div class="map-actions">
+                    <button class="action-btn" id="undoBtn">↶ Undo</button>
+                    <button class="action-btn save" id="saveMapBtn">💾 Save Map</button>
+                </div>
+            </div>
+
+            <div class="canvas-container" id="canvasContainer">
+                <div class="empty-state" id="emptyState">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/>
+                    </svg>
+                    <h3>No Layout Uploaded</h3>
+                    <p>Upload a floor plan image to start mapping</p>
+                </div>
+                <canvas id="mapCanvas" style="display: none;"></canvas>
+            </div>
+
+            <!-- Object Properties Panel -->
+            <div class="object-properties" id="objectProperties">
+                <h4>Object Properties</h4>
+                <input type="text" id="objLabel" placeholder="Label (e.g., Cam-01)">
+                <select id="objType">
+                    <option value="camera">Camera</option>
+                    <option value="zone">Zone</option>
+                    <option value="sensor">Sensor</option>
+                    <option value="door">Door</option>
+                    <option value="marker">Marker</option>
+                </select>
+                <button class="property-btn delete" id="deleteObjBtn">Delete Object</button>
+                <button class="property-btn close" id="closePropsBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/map-editor.js' %}?v=3.0"></script>
+</body>
+</html>

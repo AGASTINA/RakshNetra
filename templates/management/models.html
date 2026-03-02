@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Management - RakshNetra</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/management.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>RAKSHNETRA</h1>
+                <span class="breadcrumb"><a href="{% url 'dashboard' %}">Dashboard</a> / Models</span>
+            </div>
+            <div class="header-right">
+                <span class="username">{{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="section-header">
+                <h2>AI Model Management</h2>
+                <button class="btn btn-primary" onclick="openUploadModal()">+ Upload Model</button>
+            </div>
+
+            <div class="models-grid">
+                {% for model in models %}
+                <div class="model-card">
+                    <div class="card-header">
+                        <h3>{{ model.name }}</h3>
+                        <span class="status-badge {% if model.is_active %}active{% else %}inactive{% endif %}">
+                            {% if model.is_active %}ACTIVE{% else %}INACTIVE{% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span class="label">Type:</span>
+                            <span class="value">{{ model.get_model_type_display }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Threshold:</span>
+                            <span class="value">{{ model.confidence_threshold }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">File:</span>
+                            <span class="value code">
+                                {% if model.model_file %}
+                                    {{ model.model_file.name|truncatewords:3 }}
+                                {% else %}
+                                    No file
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Description:</span>
+                            <span class="value">{{ model.description|truncatewords:10 }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button class="btn btn-small btn-edit"
+                            data-model-id="{{ model.id }}"
+                            data-model-name="{{ model.name|escapejs }}"
+                            data-model-type="{{ model.model_type|escapejs }}"
+                            data-model-threshold="{{ model.confidence_threshold }}"
+                            data-model-description="{{ model.description|escapejs }}"
+                            onclick="openEditModalFromButton(this)">Edit</button>
+
+                        <form method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="toggle">
+                            <input type="hidden" name="model_id" value="{{ model.id }}">
+                            <button type="submit" class="btn btn-small btn-toggle">
+                                {% if model.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+
+                        <form method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="model_id" value="{{ model.id }}">
+                            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this model?')">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state">
+                    <p>No AI models uploaded yet.</p>
+                    <button class="btn btn-primary" onclick="openUploadModal()">Upload Your First Model</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Model Modal -->
+    <div id="editModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit AI Model</h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="editForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" id="edit_model_id" name="model_id">
+
+                <div class="form-group">
+                    <label for="edit_name">Model Name *</label>
+                    <input type="text" id="edit_name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_model_type">Model Type *</label>
+                    <select id="edit_model_type" name="model_type" required>
+                        {% for value, label in model_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_model_file">Replace Model File (optional)</label>
+                    <input type="file" id="edit_model_file" name="model_file" accept=".pt,.onnx,.pb">
+                    <small class="help-text">Leave empty to keep current file</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_confidence_threshold">Confidence Threshold</label>
+                    <input type="number" id="edit_confidence_threshold" name="confidence_threshold" min="0" max="1" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_description">Description</label>
+                    <textarea id="edit_description" name="description" rows="3"></textarea>
+                </div>
+
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Upload Model Modal -->
+    <div id="uploadModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload AI Model</h2>
+                <span class="close" onclick="closeUploadModal()">&times;</span>
+            </div>
+            
+            <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="name">Model Name *</label>
+                    <input type="text" id="name" name="name" placeholder="e.g., YOLOv8 Weapon Detection" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="model_type">Model Type *</label>
+                    <select id="model_type" name="model_type" required>
+                        <option value="">Select Type</option>
+                        {% for value, label in model_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="model_file">Model File (.pt, .onnx, .pb) *</label>
+                    <input type="file" id="model_file" name="model_file" accept=".pt,.onnx,.pb" required>
+                    <small class="help-text">Supported formats: PyTorch (.pt), ONNX (.onnx), TensorFlow (.pb)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confidence_threshold">Confidence Threshold</label>
+                    <input type="number" id="confidence_threshold" name="confidence_threshold" min="0" max="1" step="0.01" value="0.5">
+                    <small class="help-text">Minimum confidence score for detections (0.0 - 1.0)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="3" placeholder="Brief description of the model..."></textarea>
+                </div>
+                
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-primary">Upload Model</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #16213e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="file"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .model-card {
+            background: rgba(22, 33, 62, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .model-card:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+    </style>
+
+    <script>
+        function openUploadModal() {
+            document.getElementById('uploadModal').style.display = 'flex';
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').style.display = 'none';
+        }
+
+        function openEditModalFromButton(btn) {
+            document.getElementById('edit_model_id').value = btn.dataset.modelId || '';
+            document.getElementById('edit_name').value = btn.dataset.modelName || '';
+            document.getElementById('edit_model_type').value = btn.dataset.modelType || '';
+            document.getElementById('edit_confidence_threshold').value = btn.dataset.modelThreshold || '0.5';
+            document.getElementById('edit_description').value = btn.dataset.modelDescription || '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editForm').reset();
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('uploadModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+    <script>
+        // Attach event listeners to buttons (avoid inline onclick quoting issues)
+        document.addEventListener('DOMContentLoaded', function() {
+            // No JS handlers needed for toggle/delete (regular form posts)
+        });
+    </script>
+</body>
+</html>

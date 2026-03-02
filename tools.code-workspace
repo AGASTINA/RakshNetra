@@ -1,0 +1,43 @@
+{
+	"folders": [
+		{
+			"path": "tools"
+		},
+		{
+			"path": "templates"
+		},
+		{
+			"path": "static"
+		},
+		{
+			"path": "situational_map"
+		},
+		{
+			"path": "scripts"
+		},
+		{
+			"path": "reports"
+		},
+		{
+			"path": "rakshnetra"
+		},
+		{
+			"path": "media"
+		},
+		{
+			"path": "feeds"
+		},
+		{
+			"path": "events"
+		},
+		{
+			"path": "ai"
+		},
+		{
+			"path": "accounts"
+		},
+		{
+			"path": ".venv"
+		}
+	]
+}

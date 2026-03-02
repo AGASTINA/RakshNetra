@@ -1,0 +1,15 @@
+Django>=4.2
+djangorestframework
+channels>=4.0
+channels-redis
+opencv-python-headless
+Pillow
+psycopg2-binary
+reportlab
+python-multipart
+requests
+torch
+ultralytics
+face-recognition
+facenet-pytorch
+torchvision

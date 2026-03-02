@@ -1,0 +1,129 @@
+RAKSHNETRA WEBCAM DETECTION - COMPLETE ARCHITECTURE
+
+✅ SETUP COMPLETE
+
+Server Running:   http://localhost:8000
+Webcam Camera:    ID=2 ("Webcam Feed") 
+Stream Endpoint:  /video_feed/2/ (MJPEG)
+Database:         Ready (migrations applied)
+UI Pages:         Built and functional
+Inference:        Integrated into stream
+
+
+WHAT YOU NEED TO DO (5 STEPS)
+
+1. CREATE ACCOUNT
+   $ python manage.py createsuperuser
+   Enter: username, email, password
+
+2. UPLOAD MODEL
+   Go to: http://localhost:8000/manage/models/
+   Click: "+ Upload Model"
+   Upload: Your .pt file
+   Files save to: media/models/your_file.pt
+
+3. ACTIVATE MODEL
+   On Models page: Click "Activate" button (turns green)
+
+4. ASSIGN TO CAMERA
+   Go to: http://localhost:8000/manage/cameras/
+   Click: "Edit" on "Webcam Feed"
+   Check: Your model under "Assign AI Models"
+   Click: "Save Camera"
+
+5. VIEW DETECTION
+   Click: "👁 View Live" button
+   Or go to: http://localhost:8000/camera/2/
+   Result: Live webcam + detection boxes
+
+
+DATA FLOW
+
+Browser → /camera/2/ → HTML page loads
+HTML page → requests /video_feed/2/ → MJPEG stream
+Django → generate_mjpeg(2):
+    1. Get camera from database (id=2)
+    2. Open webcam with OpenCV (device 0)
+    3. Get active assigned models
+    4. FOR EACH FRAME:
+       - Capture raw frame
+       - Run inference on each model
+       - Draw bounding boxes
+       - Encode as JPEG
+       - Yield MJPEG chunk
+Browser → Receives stream → Displays in <img> tag
+
+
+FILE LOCATIONS
+
+Your .pt files:      media/models/
+Your video files:    media/videos/  
+Your face images:    media/face_identities/
+
+
+KEY COMMANDS
+
+Start server:
+  cd C:\Workspace\RakshNetra
+  python manage.py runserver
+
+Create user:
+  python manage.py createsuperuser
+
+CLI model upload:
+  python quick_model.py upload "C:\path\model.pt" "Name" weapon_detection 0.5
+
+CLI activate:
+  python quick_model.py activate 1
+
+CLI assign to camera:
+  python quick_model.py assign 1 2
+
+List models:
+  python quick_model.py list
+
+
+KEY URLS
+
+Dashboard:        http://localhost:8000/
+Login:            http://localhost:8000/accounts/login/
+Upload Model:     http://localhost:8000/manage/models/
+Manage Cameras:   http://localhost:8000/manage/cameras/
+Live Stream:      http://localhost:8000/camera/2/
+Raw MJPEG:        http://localhost:8000/video_feed/2/
+
+
+TROUBLESHOOTING
+
+Model won't upload?
+  → File must be .pt format
+  → Check F12 console for JS errors
+
+Detection not showing?
+  → Model must be ACTIVATED (green badge)
+  → Model must be ASSIGNED to camera
+  → Check server logs for inference errors
+
+Webcam not working?
+  → python -c "import cv2; print(cv2.VideoCapture(0).isOpened())"
+  → Should print: True
+
+Stream blank?
+  → Are you logged in? (required for /camera/<id>/)
+  → Check server logs for "Error streaming..."
+
+
+DOCUMENTATION
+
+For complete details, see:
+  - README_QUICK.md          (Quick start, 5-minute setup)
+  - COMPLETE_SETUP_GUIDE.md  (Detailed guide with examples)
+  - WEBCAM_DETECTION_GUIDE.md (Architecture & API reference)
+
+
+STATUS: READY TO USE ✅
+
+All systems are configured and operational.
+Next: Create account → Upload .pt → Activate → Assign → View!
+
+Good luck! 🎬📸

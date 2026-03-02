@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Situational Map - RakshNetra</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/management.css' %}">
+    <style>
+        .map-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 420px) 1fr;
+            gap: 20px;
+        }
+        .map-preview {
+            background: rgba(10, 14, 39, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+        }
+        .map-preview img {
+            width: 100%;
+            border-radius: 8px;
+            object-fit: contain;
+            background: #020617;
+        }
+        .object-list {
+            margin-top: 10px;
+        }
+        .object-item {
+            padding: 10px;
+            border-radius: 6px;
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            margin-bottom: 10px;
+        }
+        .object-item strong {
+            color: #00d4ff;
+        }
+        .api-box {
+            background: rgba(22, 33, 62, 0.7);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-top: 20px;
+        }
+        .api-box code {
+            display: block;
+            white-space: pre-wrap;
+            color: #d1d5db;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>RAKSHNETRA</h1>
+                <span class="breadcrumb"><a href="{% url 'dashboard' %}">Dashboard</a> / Situational Map</span>
+            </div>
+            <div class="header-right">
+                <span class="username">{{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="section-header">
+                <h2>Situational Map Setup</h2>
+                <form method="POST" style="margin:0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="seed_demo">
+                    <button class="btn btn-secondary" type="submit">Create Demo Layout</button>
+                </form>
+            </div>
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="map-grid">
+                <div>
+                    <div class="card">
+                        <h3>Upload / Update Map Layout</h3>
+                        <form method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="upload_layout">
+                            <div class="form-group">
+                                <label>Event *</label>
+                                <select name="event" required>
+                                    <option value="">Select event</option>
+                                    {% for event in events %}
+                                    <option value="{{ event.id }}">{{ event.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Map image (PNG/JPG) *</label>
+                                <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Width (meters)</label>
+                                <input type="number" step="0.1" name="width_meters" placeholder="e.g., 60">
+                            </div>
+                            <div class="form-group">
+                                <label>Height (meters)</label>
+                                <input type="number" step="0.1" name="height_meters" placeholder="e.g., 40">
+                            </div>
+                            <div class="form-footer">
+                                <button type="submit" class="btn btn-primary">Save Layout</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card" style="margin-top:20px;">
+                        <h3>Add Map Object</h3>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_object">
+                            <div class="form-group">
+                                <label>Layout *</label>
+                                <select name="layout_id" required>
+                                    <option value="">Select layout</option>
+                                    {% for layout in layouts %}
+                                    <option value="{{ layout.id }}" {% if selected_layout and layout.id == selected_layout.id %}selected{% endif %}>
+                                        {{ layout.event.name }} ({{ layout.id }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Type *</label>
+                                <select name="obj_type" required>
+                                    {% for value, label in object_types %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>X (meters) *</label>
+                                <input type="number" step="0.1" name="x" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Y (meters) *</label>
+                                <input type="number" step="0.1" name="y" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Label</label>
+                                <input type="text" name="label" placeholder="e.g., Main Gate">
+                            </div>
+                            <div class="form-footer">
+                                <button type="submit" class="btn btn-primary">Add Object</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="map-preview">
+                        <h3>Current Layout</h3>
+                        {% if selected_layout %}
+                            <p style="color:#94a3b8;">Event: {{ selected_layout.event.name }}</p>
+                            <img src="{{ selected_layout.image.url }}" alt="Map Layout">
+                            <div class="object-list">
+                                <h4>Objects</h4>
+                                {% if map_objects %}
+                                    {% for obj in map_objects %}
+                                    <div class="object-item">
+                                        <strong>{{ obj.get_obj_type_display }}</strong>
+                                        <div>{{ obj.label }}</div>
+                                        <div style="color:#94a3b8; font-size:0.85rem;">X: {{ obj.x }}, Y: {{ obj.y }}</div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p style="color:#94a3b8;">No objects added yet.</p>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <p style="color:#94a3b8;">Select a layout to preview it.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="api-box">
+                        <h3>API Quick Start</h3>
+                        <div style="color:#94a3b8;">List layouts for an event:</div>
+                        <code>GET /api/map/layouts/?event=&lt;event_id&gt;</code>
+                        <div style="color:#94a3b8; margin-top:10px;">List objects on a layout:</div>
+                        <code>GET /api/map/objects/?layout=&lt;layout_id&gt;</code>
+                        <div style="color:#94a3b8; margin-top:10px;">Create object:</div>
+                        <code>POST /api/map/objects/
+{"map_layout": 1, "obj_type": "camera", "x": 10, "y": 20, "label": "Gate"}</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

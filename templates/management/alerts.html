@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerts Management - RakshNetra</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/management.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>RAKSHNETRA</h1>
+                <span class="breadcrumb"><a href="{% url 'dashboard' %}">Dashboard</a> / Alerts</span>
+            </div>
+            <div class="header-right">
+                <span class="username">{{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="section-header">
+                <h2>Alert Management</h2>
+            </div>
+
+            <div class="filters">
+                <form method="GET" class="filter-form">
+                    <div class="filter-group">
+                        <label>Severity:</label>
+                        <select name="severity">
+                            <option value="">All Severities</option>
+                            {% for value, label in severity_choices %}
+                            <option value="{{ value }}" {% if value == current_severity %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Camera:</label>
+                        <select name="camera_id">
+                            <option value="">All Cameras</option>
+                            {% for camera in cameras %}
+                            <option value="{{ camera.id }}" {% if camera.id|stringformat:"s" == current_camera %}selected{% endif %}>{{ camera.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{% url 'alerts_management' %}" class="btn btn-secondary">Clear</a>
+                </form>
+            </div>
+
+            <div class="alerts-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Camera</th>
+                            <th>Threat Type</th>
+                            <th>Severity</th>
+                            <th>Confidence</th>
+                            <th>Location</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in alerts %}
+                        <tr class="severity-{{ alert.severity }}">
+                            <td>{{ alert.timestamp|date:"Y-m-d H:i:s" }}</td>
+                            <td>{{ alert.camera.name }}</td>
+                            <td>{{ alert.threat_type }}</td>
+                            <td><span class="severity-badge severity-{{ alert.severity }}">{{ alert.get_severity_display }}</span></td>
+                            <td>{{ alert.confidence|floatformat:2 }}</td>
+                            <td>{{ alert.location|default:"N/A" }}</td>
+                            <td>
+                                {% if alert.snapshot %}
+                                <a href="{{ alert.snapshot.url }}" target="_blank" class="btn btn-small btn-edit">View</a>
+                                {% else %}
+                                <span class="btn btn-small" style="opacity: 0.5;">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty-cell">No alerts found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .filters {
+            margin-bottom: 20px;
+            background: rgba(22, 33, 62, 0.5);
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            min-width: 150px;
+        }
+
+        .alerts-table {
+            overflow-x: auto;
+            border: 1px solid rgba(0, 212, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(22, 33, 62, 0.5);
+        }
+
+        th {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            color: #00d4ff;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 13px;
+        }
+
+        tr.severity-critical {
+            background: rgba(255, 107, 107, 0.1);
+        }
+
+        tr.severity-critical:hover {
+            background: rgba(255, 107, 107, 0.15);
+        }
+
+        tr.severity-warning {
+            background: rgba(255, 193, 7, 0.05);
+        }
+
+        tr.severity-warning:hover {
+            background: rgba(255, 193, 7, 0.1);
+        }
+
+        .severity-badge {
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .severity-badge.severity-critical {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .severity-badge.severity-warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .severity-badge.severity-info {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+        }
+
+        .empty-cell {
+            text-align: center;
+            color: #888;
+        }
+
+        @media (max-width: 768px) {
+            .filter-form {
+                flex-direction: column;
+            }
+
+            .filter-group select {
+                min-width: auto;
+            }
+
+            table {
+                font-size: 11px;
+            }
+
+            td {
+                padding: 8px;
+            }
+        }
+    </style>
+</body>
+</html>

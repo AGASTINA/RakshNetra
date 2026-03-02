@@ -1,0 +1,36 @@
+{
+  "video_file": "C:\\Users\\agast\\Downloads\\President Droupadi Murmu Reviews International Fleet _ Visakhapatnam Naval Event.mp4",
+  "processed_at": "2026-02-19T11:00:29.440622",
+  "detection_status": "\u2705 COMPLETED",
+  "video_info": {
+    "total_frames": 2274,
+    "fps": 25,
+    "duration_seconds": 90.96,
+    "resolution": "480x854"
+  },
+  "models_used": [
+    "Object Detection (YOLO)",
+    "Weapon Detection (YOLO)",
+    "Suspicious Activities Detection (YOLO)"
+  ],
+  "output_files": {
+    "detected_video": "detection_results/detected_video.mp4",
+    "this_report": "detection_results/detection_report.json"
+  },
+  "notes": [
+    "\u2705 Video processing completed successfully",
+    "\u2705 Output video with all detections saved",
+    "\ud83c\udfac All 2274 frames analyzed",
+    "\ud83d\udcca Multiple detection models run in parallel",
+    "\ud83c\udfaf People detection: ENABLED",
+    "\ud83d\udd2b Weapon detection: ENABLED",
+    "\u26a0\ufe0f  Suspicious activity detection: ENABLED",
+    "\ud83d\ude80 Processing took approximately 15-20 minutes"
+  ],
+  "next_steps": [
+    "1. Upload detected_video.mp4 to dashboard",
+    "2. View results in Events section",
+    "3. Analyze frame-by-frame detections",
+    "4. Create situational map alerts for key detections"
+  ]
+}

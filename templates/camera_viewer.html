@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Review & Detection Preview</title>
+    {% load static %}
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0e27;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        .header h1 { margin: 0; color: #00d4ff; font-size: 1.5em; }
+        .back-link {
+            background: rgba(100, 100, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #6464ff;
+            border: 1px solid rgba(100, 100, 255, 0.3);
+        }
+        
+        .player-section {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .video-player {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            max-height: 600px;
+            display: block;
+        }
+        
+        .player-controls {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        .btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+        .btn.active {
+            background: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+        
+        .timeline-container {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+        }
+        
+        .timeline-label {
+            font-size: 0.85em;
+            color: #888;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(0, 212, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .info-item {
+            background: rgba(0, 212, 255, 0.05);
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #00d4ff;
+            font-size: 0.9em;
+        }
+        .info-label { color: #888; font-size: 0.8em; margin-bottom: 3px; }
+        .info-value { color: #00d4ff; font-weight: bold; }
+        
+        .face-panel {
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .face-panel h3 { color: #00d4ff; margin-bottom: 10px; }
+        
+        .face-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .face-chip {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.85em;
+        }
+        .face-chip.threat {
+            border-color: rgba(239, 68, 68, 0.7);
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+        }
+        .face-chip.verified {
+            border-color: rgba(16, 185, 129, 0.7);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+        }
+        
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .model-card {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-left: 3px solid #00d4ff;
+            font-size: 0.9em;
+        }
+        .model-name { color: #00d4ff; font-weight: bold; margin-bottom: 3px; }
+        .model-type { color: #888; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Camera Review & Detection Preview</h1>
+            <a href="{% url 'camera_management' %}" class="back-link">← Back to Cameras</a>
+        </div>
+
+        {% if camera %}
+        <div class="player-section">
+            <div class="video-player">
+                <video id="videoPlayer" controls crossorigin="anonymous">
+                    <source id="videoSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="player-controls">
+                <div class="control-row">
+                    <button class="btn" id="playBtn" onclick="togglePlay()">▶ Play</button>
+                    <button class="btn" id="pauseBtn" onclick="pauseVideo()">⏸ Pause</button>
+                    <button class="btn" onclick="skipFrame(-5)">⏮ -5 sec</button>
+                    <button class="btn" onclick="skipFrame(5)">⏭ +5 sec</button>
+                    <button class="btn" onclick="skipFrame(-0.033)">◀ Prev Frame</button>
+                    <button class="btn" onclick="skipFrame(0.033)">Next Frame ▶</button>
+                    <span style="color: #888; font-size: 0.9em; margin-left: auto;">
+                        <span id="currentTime">00:00</span> / <span id="duration">00:00</span>
+                    </span>
+                </div>
+
+                <div class="timeline-container">
+                    <div class="timeline-label">
+                        <span>Frame Scrubber</span>
+                        <span id="scrubLabel">0%</span>
+                    </div>
+                    <input type="range" id="timeline" min="0" max="100" value="0" 
+                           oninput="seekVideo(this.value)">
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Camera</div>
+                        <div class="info-value">{{ camera.name }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Protocol</div>
+                        <div class="info-value">{{ camera.get_protocol_display }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Status</div>
+                        <div class="info-value" style="{% if camera.enabled %}color: #10b981;{% else %}color: #ef4444;{% endif %}">
+                            {% if camera.enabled %}ACTIVE{% else %}INACTIVE{% endif %}
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Resolution</div>
+                        <div class="info-value" id="resolution">-</div>
+                    </div>
+                </div>
+            </div>
+
+            {% if camera.assigned_models.all %}
+            <div style="margin-top: 15px;">
+                <h3 style="color: #00d4ff; margin-bottom: 10px;">📊 Active Detection Models</h3>
+                <div class="models-grid">
+                    {% for model in camera.assigned_models.all %}
+                    <div class="model-card">
+                        <div class="model-name">{{ model.name }}</div>
+                        <div class="model-type">{{ model.get_model_type_display }}</div>
+                        <div style="color: #666; font-size: 0.75em; margin-top: 5px;">Threshold: {{ model.confidence_threshold }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="face-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>👤 Face Intelligence</h3>
+                    <span id="faceStatus" style="color: #888; font-size: 0.85em;">Waiting for detections…</span>
+                </div>
+                <div id="faceList" class="face-list"></div>
+            </div>
+        </div>
+
+        {% else %}
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 20px; border-radius: 8px; color: #ef4444;">
+            Camera not found. <a href="{% url 'camera_management' %}" style="color: #ef4444; text-decoration: underline;">Go back</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        const video = document.getElementById('videoPlayer');
+        const videoSource = document.getElementById('videoSource');
+        const timeline = document.getElementById('timeline');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        const scrubLabel = document.getElementById('scrubLabel');
+        const testURL = "{{ camera.source }}";
+        const detectedURL = "{{ detected_video_url|default:'' }}";
+        const faceURL = "{% url 'camera_face_info' camera.id %}";
+        
+        // Setup video source
+        (function() {
+            let videoUrl = detectedURL || testURL;
+            // If it's a file path, extract the filename and create media URL
+            if (videoUrl.includes('media/videos/')) {
+                const filename = videoUrl.split('/').pop();
+                videoUrl = '/media/videos/' + filename;
+            } else if (videoUrl.includes('\\')) {
+                const filename = videoUrl.split('\\').pop();
+                videoUrl = '/media/videos/' + filename;
+            }
+            videoSource.src = videoUrl;
+            video.load();
+            console.log('Video URL:', videoUrl);
+        })();
+
+        // Format time HH:MM:SS
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '00:00';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h ? h+':' : ''}${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        video.addEventListener('loadedmetadata', () => {
+            durationEl.textContent = formatTime(video.duration);
+            document.getElementById('resolution').textContent = 
+                video.videoWidth + 'x' + video.videoHeight;
+        });
+
+        video.addEventListener('timeupdate', () => {
+            currentTimeEl.textContent = formatTime(video.currentTime);
+            timeline.value = (video.currentTime / video.duration) * 100;
+            scrubLabel.textContent = Math.round(timeline.value) + '%';
+        });
+
+        function togglePlay() {
+            if (video.paused) {
+                video.play();
+                document.getElementById('playBtn').textContent = '⏸ Playing';
+            } else {
+                video.pause();
+                document.getElementById('playBtn').textContent = '▶ Paused';
+            }
+        }
+
+        function pauseVideo() {
+            video.pause();
+            document.getElementById('playBtn').textContent = '▶ Play';
+        }
+
+        function seekVideo(percent) {
+            video.currentTime = (percent / 100) * video.duration;
+        }
+
+        function skipFrame(seconds) {
+            video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+        }
+
+        // Poll face detections every 1.5 seconds
+        const faceList = document.getElementById('faceList');
+        const faceStatus = document.getElementById('faceStatus');
+
+        function renderFaceList(faces) {
+            faceList.innerHTML = '';
+            if (!faces || faces.length === 0) {
+                faceStatus.textContent = 'No faces detected';
+                return;
+            }
+            
+            faceStatus.textContent = `${faces.length} face(s) detected`;
+            faces.forEach(face => {
+                const threatChip = document.createElement('div');
+                const isThreat = (face.identity_type || '').toLowerCase() === 'suspect';
+                threatChip.className = `face-chip ${isThreat ? 'threat' : 'verified'}`;
+                threatChip.innerHTML = `
+                    <div style="color: #00d4ff; font-weight: bold;">${face.label || 'Unknown'}</div>
+                    ${face.position ? `<div style="color: #888; font-size: 0.8em;">${face.position}</div>` : ''}
+                    <div style="color: ${isThreat ? '#ef4444' : '#10b981'}; font-size: 0.8em;">
+                        ${(face.identity_type || 'unknown').toUpperCase()} ${face.confidence ? `· ${face.confidence.toFixed(2)}` : ''}
+                    </div>
+                `;
+                faceList.appendChild(threatChip);
+            });
+        }
+
+        async function pollFaceInfo() {
+            try {
+                const response = await fetch(faceURL, { cache: 'no-store' });
+                const data = await response.json();
+                renderFaceList(data.faces || []);
+            } catch (err) {
+                // Silent error
+            }
+        }
+
+        setInterval(pollFaceInfo, 1500);
+        pollFaceInfo();
+
+        // Auto-hide controls after 3 seconds of inactivity
+        let controlTimeout;
+        function showControls() {
+            document.querySelector('.player-controls').style.opacity = '1';
+            clearTimeout(controlTimeout);
+            controlTimeout = setTimeout(() => {
+                if (!video.paused) {
+                    document.querySelector('.player-controls').style.opacity = '0.7';
+                }
+            }, 3000);
+        }
+        video.addEventListener('mousemove', showControls);
+        showControls();
+    </script>
+</body>
+</html>
+    <style>
+        body {
+            background: #0a0e27;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .viewer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        .header h1 {
+            margin: 0;
+            color: #00d4ff;
+        }
+        .back-link {
+            background: rgba(100, 100, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #6464ff;
+            border: 1px solid rgba(100, 100, 255, 0.3);
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: rgba(100, 100, 255, 0.2);
+            color: #7d7dff;
+        }
+        .stream-wrapper {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .face-panel {
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .face-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .face-chip {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .face-chip.green {
+            border-color: rgba(16, 185, 129, 0.7);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+        }
+        .face-chip.red {
+            border-color: rgba(239, 68, 68, 0.7);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+        }
+        .face-name {
+            font-weight: bold;
+            color: #00d4ff;
+            font-size: 1rem;
+        }
+        .face-role {
+            color: #a5b4fc;
+            font-size: 0.9rem;
+        }
+        .face-meta {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+        .stream-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            background: rgba(0, 212, 255, 0.05);
+            padding: 12px;
+            border-radius: 5px;
+            border-left: 3px solid #00d4ff;
+        }
+        .info-label {
+            font-size: 0.85em;
+            color: #888;
+            text-transform: uppercase;
+        }
+        .info-value {
+            font-size: 1.2em;
+            color: #00d4ff;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .video-stream {
+            width: 100%;
+            max-height: 600px;
+            border-radius: 5px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+        .video-stream img {
+            width: 100%;
+            height: auto;
+            max-height: 600px;
+            object-fit: contain;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+        .btn-primary:hover {
+            background: rgba(0, 212, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+        .btn-danger {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+            border: 1px solid #ff6464;
+        }
+        .btn-danger:hover {
+            background: rgba(255, 100, 100, 0.3);
+        }
+        .error {
+            background: rgba(255, 100, 100, 0.1);
+            border: 1px solid #ff6464;
+            color: #ff9999;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .status-badge.active {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+        .status-badge.inactive {
+            background: rgba(200, 100, 100, 0.2);
+            color: #ff9999;
+            border: 1px solid #cc6666;
+        }
+    </style>
+</head>
+<body>
+    <div class="viewer-container">
+        <div class="header">
+            <h1>🎥 Live Camera Feed</h1>
+            <a href="{% url 'camera_management' %}" class="back-link">← Back to Management</a>
+        </div>
+
+        {% if error %}
+        <div class="error">
+            ⚠️ {{ error }}
+        </div>
+        {% endif %}
+
+        {% if camera %}
+        <div class="stream-wrapper">
+            <div class="stream-info">
+                <div class="info-item">
+                    <div class="info-label">Camera Name</div>
+                    <div class="info-value">{{ camera.name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Protocol</div>
+                    <div class="info-value">{{ camera.get_protocol_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Source</div>
+                    <div class="info-value" style="font-size: 0.9em;">{{ camera.source }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <span class="status-badge {% if camera.enabled %}active{% else %}inactive{% endif %}">
+                        {% if camera.enabled %}READY{% else %}INACTIVE{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="video-stream">
+                <img id="videoStream" src="{% url 'video_feed' camera.id %}" alt="Live Stream">
+            </div>
+
+            <div class="face-panel">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <h3 style="margin:0; color:#00d4ff;">Face Intelligence</h3>
+                    <span id="faceStatus" style="color:#94a3b8; font-size:0.85rem;">Waiting for detections…</span>
+                </div>
+                <div id="faceList" class="face-list"></div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="reloadStream()">🔄 Reload Stream</button>
+                <a href="{% url 'camera_management' %}" class="btn btn-secondary" style="text-decoration:none;">Manage Cameras</a>
+            </div>
+        </div>
+
+        {% if camera.assigned_models.all %}
+        <div class="stream-wrapper">
+            <h3>Assigned AI Models</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                {% for model in camera.assigned_models.all %}
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 5px; border-left: 3px solid #00d4ff;">
+                    <div style="font-weight: bold; color: #00d4ff;">{{ model.name }}</div>
+                    <div style="color: #888; font-size: 0.9em;">{{ model.get_model_type_display }}</div>
+                    <div style="color: #666; font-size: 0.8em; margin-top: 5px;">Threshold: {{ model.confidence_threshold }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="error">
+            Camera not found. <a href="{% url 'camera_management' %}" style="color: #00d4ff; text-decoration: underline;">Go back</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function reloadStream() {
+            const img = document.getElementById('videoStream');
+            const src = img.src;
+            // Force reload by adding timestamp
+            img.src = src + '?t=' + new Date().getTime();
+            setTimeout(() => {
+                img.src = src;
+            }, 100);
+        }
+
+        // Auto-reload stream every 5 seconds if connected
+        setInterval(() => {
+            const img = document.getElementById('videoStream');
+            if (img && img.src) {
+                reloadStream();
+            }
+        }, 5000);
+
+        const faceList = document.getElementById('faceList');
+        const faceStatus = document.getElementById('faceStatus');
+        const faceInfoUrl = "{% url 'camera_face_info' camera.id %}";
+
+        function renderFaceList(faces, timestamp) {
+            faceList.innerHTML = '';
+            if (!faces || faces.length === 0) {
+                faceStatus.textContent = 'No faces detected yet';
+                return;
+            }
+
+            faceStatus.textContent = `Updated ${new Date((timestamp || Date.now()) * 1000).toLocaleTimeString()}`;
+            faces.forEach(face => {
+                const name = face.label || 'Unknown';
+                const identityType = (face.identity_type || 'unknown').toLowerCase();
+                const position = face.position || '';
+                const confidence = typeof face.confidence === 'number' ? face.confidence.toFixed(2) : '';
+                const isThreat = identityType === 'suspect' || identityType === 'unknown';
+                const chip = document.createElement('div');
+                chip.className = `face-chip ${isThreat ? 'red' : 'green'}`;
+                chip.innerHTML = `
+                    <div class="face-name">${name}</div>
+                    ${position ? `<div class="face-role">${position}</div>` : ''}
+                    <div class="face-meta">${identityType.toUpperCase()} ${confidence ? `· ${confidence}` : ''}</div>
+                `;
+                faceList.appendChild(chip);
+            });
+        }
+
+        async function pollFaceInfo() {
+            try {
+                const response = await fetch(faceInfoUrl, { cache: 'no-store' });
+                if (!response.ok) {
+                    return;
+                }
+                const data = await response.json();
+                renderFaceList(data.faces || [], data.timestamp);
+            } catch (err) {
+                // silent
+            }
+        }
+
+        setInterval(pollFaceInfo, 2000);
+        pollFaceInfo();
+    </script>
+</body>
+</html>

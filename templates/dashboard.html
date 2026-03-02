@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RakshNetra - Operations Dashboard</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo">RAKSHNETRA</h1>
+                <span class="tagline">AI-Powered Integrated Command & Surveillance</span>
+            </div>
+            <div class="header-right">
+                <div class="server-status">
+                    <span class="status-indicator online"></span>
+                    <span class="status-text">Server: ONLINE</span>
+                </div>
+                <div class="user-menu">
+                    <span class="username">{{ user.username }}</span>
+                    <span class="role-badge" data-role="{{ user.role }}">{{ user.get_role_display }}</span>
+                    <a href="{% url 'logout' %}" class="logout-link">Logout</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Menu -->
+        <nav class="nav-menu">
+            <a href="{% url 'dashboard' %}" class="nav-item active">Dashboard</a>
+            <a href="{% url 'camera_management' %}" class="nav-item">Cameras</a>
+            <a href="{% url 'model_management' %}" class="nav-item">AI Models</a>
+            <a href="{% url 'face_management' %}" class="nav-item">Face Identities</a>
+            <a href="{% url 'alerts_management' %}" class="nav-item">Alerts</a>
+            <a href="{% url 'events_management' %}" class="nav-item">Events</a>
+            <a href="{% url 'situational_map' %}" class="nav-item">Situational Map</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Sidebar: Events & Controls -->
+            <aside class="sidebar">
+                <section class="panel">
+                    <h3>Current Event</h3>
+                    <div id="event-selector" class="event-selector">
+                        <select id="event-select">
+                            <option value="">Select Event...</option>
+                            {% if events %}
+                                {% for event in events %}
+                                    <option value="{{ event.id }}" data-location="{{ event.location }}" data-threat="{{ event.threat_level }}" data-start="{{ event.start_time|date:'Y-m-d H:i' }}">
+                                        {{ event.name }}
+                                    </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No events available</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div id="event-details" class="event-details" style="display:none;">
+                        <div class="event-info">
+                            <p><strong>Location:</strong> <span id="event-location">-</span></p>
+                            <p><strong>Threat Level:</strong> <span id="event-threat-level" class="threat-badge">-</span></p>
+                            <p><strong>Start:</strong> <span id="event-start">-</span></p>
+                            <p><strong>Status:</strong> <span id="event-status">-</span></p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h3>Camera Management</h3>
+                    <div class="camera-controls">
+                        <button id="add-camera-btn" class="btn btn-primary">+ Add Camera</button>
+                        <div id="camera-list" class="camera-list"></div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h3>
+                        Active Models
+                        <span style="margin-left: 6px; font-size: 0.75rem; color: #9ca3af;">
+                            {{ active_models_count }} Active / {{ total_models_count }} Total
+                        </span>
+                    </h3>
+                    <div id="model-list" class="model-list">
+                        {% if all_models %}
+                            {% for model in all_models %}
+                                <div class="model-item">
+                                    <div><strong>{{ model.name }}</strong></div>
+                                    <div style="font-size: 0.75rem; color: #a8b3c1;">{{ model.model_type }}</div>
+                                    {% if model.is_active %}
+                                        <div class="model-status active">ACTIVE</div>
+                                        <div style="color: #10b981; font-size: 0.75rem;">✓ Ready</div>
+                                    {% else %}
+                                        <div class="model-status idle">INACTIVE</div>
+                                        <div style="color: #9ca3af; font-size: 0.75rem;">○ Idle</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="model-empty" style="padding: 10px; color: #888; font-size: 0.85rem;">No models found</div>
+                        {% endif %}
+                    </div>
+                    <div class="panel-footer">
+                        <a href="{% url 'model_management' %}" class="btn btn-secondary btn-block">Manage Models</a>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h3>Alerts</h3>
+                    <div id="alert-count" class="alert-count">
+                        <span class="count-badge critical">0</span> Critical
+                        <span class="count-badge warning">0</span> Warning
+                        <span class="count-badge info">0</span> Info
+                    </div>
+                    <div id="alert-feed" class="alert-feed"></div>
+                </section>
+            </aside>
+
+            <!-- Center: Video Grid & Map -->
+            <section class="main-panel">
+                <!-- Tab Navigation -->
+                <div class="tab-navigation">
+                    <button class="tab-button active" data-tab="video-grid">Video Grid</button>
+                    <button class="tab-button" data-tab="situational-map">Situational Map</button>
+                    <button class="tab-button" data-tab="reports">Reports</button>
+                </div>
+
+                <!-- Video Grid Tab -->
+                <div id="video-grid" class="tab-content active">
+                    <div class="video-grid-container">
+                        <div id="video-grid-layout" class="video-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Situational Map Tab -->
+                <div id="situational-map" class="tab-content">
+                    <div class="architecture-map-wrapper">
+                        <!-- Map Toolbar -->
+                        <div class="map-toolbar">
+                            <div class="map-toolbar-title">
+                                🗺️ 2D Architecture Map
+                            </div>
+                            <div class="map-toolbar-tools">
+                                <button class="map-tool-btn active" data-tool="select" title="Select">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M3 3l7.5 17.5L13 13l7.5 2.5L3 3z"/>
+                                    </svg>
+                                    Select
+                                </button>
+                                <button class="map-tool-btn" data-tool="zone" title="Draw Room/Zone">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <rect x="3" y="3" width="18" height="18" stroke-width="2"/>
+                                    </svg>
+                                    Zone
+                                </button>
+                                <button class="map-tool-btn" data-tool="wall" title="Draw Wall">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                        <rect x="3" y="10" width="18" height="4"/>
+                                    </svg>
+                                    Wall
+                                </button>
+                                <button class="map-tool-btn" data-tool="door" title="Place Door">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M6 3h12v18H6V3zm7 9a1 1 0 11-2 0 1 1 0 012 0z"/>
+                                    </svg>
+                                    Door
+                                </button>
+                                <button class="map-tool-btn" data-tool="camera" title="Place Camera">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                                    </svg>
+                                    Camera
+                                </button>
+                                <button class="map-tool-btn" data-tool="soldier" title="Place NSG Unit">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                        <circle cx="12" cy="8" r="3"/>
+                                        <path d="M12 14c-4 0-8 2-8 4v2h16v-2c0-2-4-4-8-4z"/>
+                                    </svg>
+                                    Soldier
+                                </button>
+                                <button class="map-tool-btn map-tool-delete" id="deleteMapObjectBtn" title="Delete Selected">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M3 6h18M8 6V4h8v2m-9 4v10m6-10v10"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="map-toolbar-actions">
+                                <select id="layoutSelector" class="map-action-select" title="Load Floor Plan">
+                                    <option value="">Select Floor Plan...</option>
+                                </select>
+                                <button class="map-action-btn" id="uploadLayoutBtn" title="Upload Floor Plan">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M3 17v4h18v-4M7 9l5-5m0 0l5 5m-5-5v12"/>
+                                    </svg>
+                                </button>
+                                <input type="file" id="layoutFileInput" accept="image/*" style="display: none;">
+                                <button class="map-action-btn" id="refreshBackgroundBtn" title="Refresh Background">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M1 4v6h6M23 20v-6h-6"/>
+                                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                                    </svg>
+                                </button>
+                                <button class="map-action-btn" id="zoomInBtn" title="Zoom In">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <circle cx="11" cy="11" r="8"/>
+                                        <path d="M21 21l-4.35-4.35M11 8v6m-3-3h6"/>
+                                    </svg>
+                                </button>
+                                <button class="map-action-btn" id="zoomOutBtn" title="Zoom Out">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <circle cx="11" cy="11" r="8"/>
+                                        <path d="M21 21l-4.35-4.35M8 11h6"/>
+                                    </svg>
+                                </button>
+                                <button class="map-action-btn" id="resetViewBtn" title="Reset View">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                    </svg>
+                                </button>
+                                <button class="map-action-btn" id="saveMapBtn" title="Save Map">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                        <polyline points="17 21 17 13 7 13 7 21"/>
+                                        <polyline points="7 3 7 8 15 8"/>
+                                    </svg>
+                                </button>
+                                <button class="map-action-btn" id="enableTrackingBtn" data-tracking="false" title="Enable Live Tracking">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <circle cx="12" cy="12" r="9"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Map Canvas Container -->
+                        <div class="map-canvas-wrapper" id="mapEditorContainer">
+                            <canvas id="architectureMapCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Tab -->
+                <div id="reports" class="tab-content">
+                    <div class="reports-container">
+                        <h3>Event Reports</h3>
+                        <div id="reports-list" class="reports-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Sidebar: Stats & Intelligence -->
+            <aside class="right-sidebar">
+                <section class="panel">
+                    <h3>Live Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-persons">0</div>
+                            <div class="stat-label">Persons Detected</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-weapons">0</div>
+                            <div class="stat-label">Weapons Detected</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-threats">0</div>
+                            <div class="stat-label">Anomalies</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-fps">0</div>
+                            <div class="stat-label">Avg FPS</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h3>Face Intelligence</h3>
+                    <div class="face-intelligence">
+                        <a href="{% url 'face_management' %}" class="btn btn-secondary btn-block">Manage Face Identities</a>
+                        <div class="face-note">Organize NSG, Police, and Suspect profiles on the dedicated page.</div>
+                        <div id="identified-faces" class="identified-faces"></div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h3>System Health</h3>
+                    <div class="health-indicators">
+                        <div class="health-item">
+                            <span>Channels Layer</span>
+                            <span class="health-status online">●</span>
+                        </div>
+                        <div class="health-item">
+                            <span>Database</span>
+                            <span class="health-status online">●</span>
+                        </div>
+                        <div class="health-item">
+                            <span>Storage</span>
+                            <span class="health-status online">●</span>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Modal: Add Camera -->
+    <div id="add-camera-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>Add Camera Feed</h2>
+            <form id="add-camera-form">
+                <label>Camera Name: <input type="text" name="name" required></label>
+                <label>Protocol:
+                    <select name="protocol" required>
+                        <option value="webcam">USB Webcam</option>
+                        <option value="rtsp">RTSP (IP Camera/CCTV)</option>
+                        <option value="rtmp">RTMP</option>
+                        <option value="http">HTTP/HTTPS</option>
+                        <option value="hls">HLS (m3u8)</option>
+                        <option value="file">Video File</option>
+                    </select>
+                </label>
+                <label>Source (URL, path, or device index): <input type="text" name="source" required></label>
+                <label>Mode:
+                    <select name="mode" required>
+                        <option value="preview">Preview (Browser)</option>
+                        <option value="ai">AI Processing (OpenCV)</option>
+                    </select>
+                </label>
+                <button type="submit" class="btn btn-primary">Add Camera</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- WebSocket Connection -->
+    <script>
+        const eventId = new URLSearchParams(window.location.search).get('event_id');
+        if (eventId) {
+            // Connect to WebSocket for alerts
+            const alertWs = new WebSocket(`ws://localhost:8000/ws/alerts/${eventId}/`);
+            alertWs.onmessage = function(e) {
+                const alert = JSON.parse(e.data);
+                console.log('Alert received:', alert);
+                updateAlertUI(alert);
+            };
+
+            // Connect to WebSocket for map updates
+            const mapWs = new WebSocket(`ws://localhost:8000/ws/map/${eventId}/`);
+            mapWs.onmessage = function(e) {
+                const update = JSON.parse(e.data);
+                console.log('Map update received:', update);
+                updateMapUI(update);
+            };
+        }
+    </script>
+
+    <!-- Server-rendered data for dashboard -->
+    <script>
+        // Provide server-rendered camera and event data to JavaScript
+        window.dashboardData = {
+            cameras: {{ cameras_json|safe }},
+            events: {{ events_json|safe }}
+        };
+        console.log('Dashboard data loaded:', window.dashboardData.cameras.length, 'cameras,', window.dashboardData.events.length, 'events');
+    </script>
+
+    <script src="{% static 'js/map-editor-pro.js' %}?v=2.0"></script>
+    <script src="{% static 'js/dashboard.js' %}?v=2.0"></script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events Management - RakshNetra</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/management.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>RAKSHNETRA</h1>
+                <span class="breadcrumb"><a href="{% url 'dashboard' %}">Dashboard</a> / Events</span>
+            </div>
+            <div class="header-right">
+                <span class="username">{{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="section-header">
+                <h2>Operations Events</h2>
+                <button class="btn btn-primary" data-action="open-event-modal">+ New Event</button>
+            </div>
+
+            <!-- Create Event Modal -->
+            <div id="eventModal" class="modal" style="display:none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Create New Event</h2>
+                        <span class="close" data-action="close-event-modal">&times;</span>
+                    </div>
+                    
+                    <form method="POST" action="{% url 'events_management' %}" id="eventForm">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="event_name">Event Name *</label>
+                            <input type="text" id="event_name" name="name" placeholder="e.g., VIP Protection Operation" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="event_location">Location *</label>
+                            <input type="text" id="event_location" name="location" placeholder="e.g., Downtown District, Zone A" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="event_start_time">Start Time *</label>
+                            <input type="datetime-local" id="event_start_time" name="start_time" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="event_end_time">End Time *</label>
+                            <input type="datetime-local" id="event_end_time" name="end_time" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="event_threat_level">Threat Level</label>
+                            <select id="event_threat_level" name="threat_level">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="event_description">Description</label>
+                            <textarea id="event_description" name="description" rows="3" placeholder="Event details and notes..."></textarea>
+                        </div>
+                        
+                        <div class="form-footer">
+                            <button type="submit" class="btn btn-primary">Create Event</button>
+                            <button type="button" class="btn btn-secondary" data-action="close-event-modal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="events-grid">
+                {% for event in events %}
+                <div class="event-card">
+                    <div class="card-header">
+                        <h3>{{ event.name }}</h3>
+                        <span class="threat-badge threat-{{ event.threat_level }}">{{ event.get_threat_level_display }}</span>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span class="label">Location:</span>
+                            <span class="value">{{ event.location|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Start Time:</span>
+                            <span class="value">{{ event.start_time|date:"Y-m-d H:i" }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">End Time:</span>
+                            <span class="value">{{ event.end_time|date:"Y-m-d H:i" }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Created By:</span>
+                            <span class="value">{{ event.created_by.username|default:"System" }}</span>
+                        </div>
+                        {% if event.description %}
+                        <div class="description">
+                            <p>{{ event.description }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button class="btn btn-small btn-edit" onclick="alert('Edit functionality coming soon')">Edit</button>
+                        <button class="btn btn-small btn-danger" onclick="alert('Delete functionality coming soon')">Delete</button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state">
+                    <p>No operations events recorded yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #16213e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+        }
+
+        .close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .close:hover {
+            color: #fff;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+
+        input[type="text"],
+        input[type="datetime-local"],
+        input[type="number"],
+        input[type="file"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .form-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .form-footer button {
+            flex: 1;
+        }
+
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .event-card {
+            background: rgba(22, 33, 62, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .event-card:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .card-header h3 {
+            color: #00d4ff;
+            font-size: 18px;
+        }
+
+        .threat-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .threat-badge.threat-high {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        .threat-badge.threat-medium {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .threat-badge.threat-low {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .card-body {
+            margin-bottom: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .info-row .label {
+            color: #888;
+            font-weight: bold;
+        }
+
+        .info-row .value {
+            color: #ccc;
+        }
+
+        .description {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+            font-size: 12px;
+            color: #aaa;
+            max-height: 60px;
+            overflow: hidden;
+        }
+
+        .card-footer {
+            display: flex;
+            gap: 8px;
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+    </style>
+
+    <script>
+        // Event modal management
+        const eventModal = document.getElementById('eventModal');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Open event modal
+            document.querySelectorAll('[data-action="open-event-modal"]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    eventModal.style.display = 'flex';
+                });
+            });
+
+            // Close event modal
+            document.querySelectorAll('[data-action="close-event-modal"]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    eventModal.style.display = 'none';
+                });
+            });
+
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target == eventModal) {
+                    eventModal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
